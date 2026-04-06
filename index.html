@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<title>Flappy Bird Menu</title>
+<style>
+body { margin:0; overflow:hidden; background: linear-gradient(to bottom,#70c5ce,#fff);} 
+canvas { display:block; margin:auto; border:3px solid #333; border-radius:10px; }
+button { position:absolute; left:50%; transform:translateX(-50%); padding:12px 25px; font-size:18px; cursor:pointer; margin:8px; }
+#onePlayer { top:35%; }
+#twoPlayer { top:45%; }
+#backButton { top:550px; display:none; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<div id="menu">
+  <button id="onePlayer">1 Player</button>
+  <button id="twoPlayer">2 Players</button>
+</div>
+
+<button id="backButton">Back to Menu</button>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = 400;
+canvas.height = 600;
+
+let bird1, bird2, pipes, frame, gameOver, winner, confetti=[], gameMode=null, score=0;
+let menu = document.getElementById("menu");
+let backButton = document.getElementById("backButton");
+let animationId = null;
+
+function resetGame(){
+  bird1={x:80,y:200,r:15,gravity:0.4,lift:-8,vel:0,color:"yellow"};
+  bird2={x:120,y:200,r:15,gravity:0.4,lift:-8,vel:0,color:"red"};
+  pipes=[];
+  frame=0;
+  gameOver=false;
+  winner=null;
+  confetti=[];
+  score=0;
+}
+
+function drawBird(b){ ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); }
+function drawPipes(){ 
+  ctx.fillStyle="green"; 
+  pipes.forEach(p=>{
+    ctx.fillRect(p.x,0,p.w,p.top); 
+    ctx.fillRect(p.x,canvas.height-p.bottom,p.w,p.bottom); 
+  }); 
+}
+function collide(b,p){ return b.x+b.r>p.x && b.x-b.r<p.x+p.w && (b.y-b.r<p.top || b.y+b.r>canvas.height-p.bottom); }
+function spawnConfetti(color){ for(let i=0;i<80;i++){ confetti.push({x:Math.random()*400,y:Math.random()*600,vy:Math.random()*3+2,color}); } }
+function drawConfetti(){ confetti.forEach(c=>{ ctx.fillStyle=c.color; ctx.fillRect(c.x,c.y,4,4); c.y+=c.vy; }); }
+
+function update(){
+  if(!gameOver){
+    [bird1,bird2].forEach(b=>{b.vel+=b.gravity; b.y+=b.vel;});
+
+    if(frame%100===0){ // стандарт жиілік
+      let top=Math.random()*250+50; 
+      let gap=160; 
+      pipes.push({x:400,w:50,top:top,bottom:600-top-gap,passed:false}); 
+    }
+
+    pipes.forEach(p=>{
+      p.x -= 2; // стандарт жылдамдық
+
+      if(gameMode==="two" && collide(bird1,p)){ gameOver=true; winner="Red"; spawnConfetti("red"); }
+      if(gameMode==="two" && collide(bird2,p)){ gameOver=true; winner="Yellow"; spawnConfetti("yellow"); }
+
+      if(gameMode==="one" && collide(bird1,p)){ gameOver=true; winner="Yellow"; spawnConfetti("yellow"); }
+
+      if(!p.passed && p.x + p.w < bird1.x){
+        p.passed = true;
+        score++;
+      }
+    });
+
+    if(gameMode==="two"){
+      if(bird1.y>600||bird1.y<0){gameOver=true; winner="Red"; spawnConfetti("red");} 
+      if(bird2.y>600||bird2.y<0){gameOver=true; winner="Yellow"; spawnConfetti("yellow");} 
+    } else {
+      if(bird1.y>600||bird1.y<0){gameOver=true; winner="Yellow"; spawnConfetti("yellow");} 
+    }
+  }
+
+  ctx.clearRect(0,0,400,600); 
+  drawBird(bird1); 
+  if(gameMode==="two") drawBird(bird2);
+  drawPipes();
+
+  ctx.fillStyle="black";
+  ctx.font="20px Arial";
+  ctx.fillText("Score: "+score, 10, 30);
+
+  if(gameOver){
+    ctx.fillStyle="black"; 
+    ctx.font="28px Arial"; 
+    ctx.fillText(winner+" wins!",120,300); 
+    ctx.font="18px Arial";
+    ctx.fillText("Press Space or Click to Restart",50,340);
+  }
+
+  drawConfetti(); 
+  frame++; 
+  animationId = requestAnimationFrame(update); 
+}
+
+document.addEventListener("keydown", e=>{
+  if(!gameOver){
+    if(e.code==="KeyW") bird1.vel=bird1.lift;
+    if(gameMode==="two" && e.code==="KeyL") bird2.vel=bird2.lift;
+  } else if(e.code==="Space" && gameOver){ resetGame(); }
+});
+
+canvas.addEventListener("mousedown", ()=>{
+  if(gameOver){ resetGame(); }
+});
+
+document.getElementById("onePlayer").addEventListener("click", ()=>{
+  gameMode="one";
+  menu.style.display="none";
+  backButton.style.display="block";
+  cancelAnimationFrame(animationId);
+  resetGame(); 
+  update();
+});
+
+document.getElementById("twoPlayer").addEventListener("click", ()=>{
+  gameMode="two";
+  menu.style.display="none";
+  backButton.style.display="block";
+  cancelAnimationFrame(animationId);
+  resetGame(); 
+  update();
+});
+
+backButton.addEventListener("click", ()=>{
+  menu.style.display="block";
+  backButton.style.display="none";
+  cancelAnimationFrame(animationId);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+});
+
+</script>
+</body>
+</html>
